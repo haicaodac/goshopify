@@ -12,8 +12,8 @@ var app goshopify.AppShopify
 
 func main() {
 	app = goshopify.New(goshopify.Config{
-		APIKey:      "466b6be6e44cc91ad6d2cd7cb1d664af",
-		APISecret:   "c335a87aa01474ae4cec5462b7508d18",
+		APIKey:      "7073a9eff6296c1ab69ab9dc546344d1",
+		APISecret:   "9f6d680d026f863018e46289b5f30a46",
 		RedirectUrl: "http://localhost:8080/shopify/callback",
 		Scope:       "read_products,read_orders",
 	})
@@ -32,8 +32,10 @@ func main() {
 				http.Error(w, "Invalid Signature", http.StatusUnauthorized)
 				return
 			}
+			fmt.Println("done")
 		} else {
 			// Home pages
+
 		}
 		fmt.Println(shopName)
 		// fmt.Println(authURL)
@@ -65,6 +67,7 @@ func main() {
 		fmt.Println(err)
 
 	})
+
 	fmt.Println("Server run ...")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
