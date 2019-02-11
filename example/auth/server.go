@@ -21,62 +21,26 @@ var (
 	store = sessions.NewCookieStore(key)
 )
 
-// ZipFiles compresses one or many files into a single zip archive file.
-// Param 1: filename is the output zip file's name.
-// Param 2: files is a list of files to add to the zip.
-func ZipFiles(filename string, files []string) error {
-
-	newZipFile, err := os.Create(filename)
+func appendFiles(filename string, zipw *zip.Writer) error {
+	file, err := os.Open(filename)
 	if err != nil {
-		return err
+		return fmt.Errorf("Failed to open %s: %s", filename, err)
 	}
-	defer newZipFile.Close()
+	defer file.Close()
 
-	zipWriter := zip.NewWriter(newZipFile)
-	defer zipWriter.Close()
-
-	// Add files to zip
-	for _, file := range files {
-		if err = AddFileToZip(zipWriter, file); err != nil {
-			return err
-		}
+	wr, err := zipw.Create(filename)
+	log.Println(filename)
+	log.Println(wr)
+	if err != nil {
+		msg := "Failed to create entry for %s in zip file: %s"
+		return fmt.Errorf(msg, filename, err)
 	}
+
+	if _, err := io.Copy(wr, file); err != nil {
+		return fmt.Errorf("Failed to write %s to zip: %s", filename, err)
+	}
+
 	return nil
-}
-
-func AddFileToZip(zipWriter *zip.Writer, filename string) error {
-
-	fileToZip, err := os.Open(filename)
-	if err != nil {
-		return err
-	}
-	defer fileToZip.Close()
-
-	// Get the file information
-	info, err := fileToZip.Stat()
-	if err != nil {
-		return err
-	}
-
-	header, err := zip.FileInfoHeader(info)
-	if err != nil {
-		return err
-	}
-
-	// Using FileInfoHeader() above only uses the basename of the file. If we want
-	// to preserve the folder structure we can overwrite this with the full path.
-	header.Name = filename
-
-	// Change to deflate to gain better compression
-	// see http://golang.org/pkg/archive/zip/#pkg-constants
-	header.Method = zip.Deflate
-
-	writer, err := zipWriter.CreateHeader(header)
-	if err != nil {
-		return err
-	}
-	_, err = io.Copy(writer, fileToZip)
-	return err
 }
 
 func main() {
@@ -135,10 +99,10 @@ func main() {
 			<title>Xin chao</title>
 		</head>
 		<body>
-			<h1>dsahkjdhasjk</h1>
+			<h1>Minh</h1>
 		</body>
 	</html>`)
-		err := ioutil.WriteFile("temp/html.liquid", html, 0644)
+		err := ioutil.WriteFile("html.liquid", html, 0644)
 		if err != nil {
 			panic(err)
 		}
@@ -146,7 +110,7 @@ func main() {
 		css := []byte(`.h1{
 			color: red;
 		}`)
-		err = ioutil.WriteFile("temp/css.liquid", css, 0644)
+		err = ioutil.WriteFile("css.liquid", css, 0644)
 		if err != nil {
 			panic(err)
 		}
@@ -154,19 +118,39 @@ func main() {
 		js := []byte(`<script>
 		alert("xin chao")
 	</script>`)
-		err = ioutil.WriteFile("temp/js.liquid", js, 0644)
+		err = ioutil.WriteFile("js.liquid", js, 0644)
 		if err != nil {
 			panic(err)
 		}
 
-		// Zip ..
-		files := []string{"temp/html.liquid", "temp/css.liquid", "temp/js.liquid"}
-		output := "temp/theme.zip"
-
-		if err := ZipFiles(output, files); err != nil {
-			panic(err)
+		flags := os.O_WRONLY | os.O_CREATE | os.O_TRUNC
+		zipName := "theme.zip"
+		file, err := os.OpenFile(zipName, flags, 0644)
+		if err != nil {
+			log.Fatalf("Failed to open zip for writing: %s", err)
 		}
-		fmt.Println("Zipped File:", output)
+		defer file.Close()
+
+		files := []string{"html.liquid", "css.liquid", "js.liquid"}
+
+		zipw := zip.NewWriter(file)
+		defer zipw.Close()
+
+		for _, filename := range files {
+			if err := appendFiles(filename, zipw); err != nil {
+				log.Fatalf("Failed to add file %s to zip: %s", filename, err)
+			}
+
+			// Remove file after append to zip
+			if err := os.Remove(filename); err != nil {
+				log.Fatalf("Failed to remove file %s: %s", filename, err)
+			}
+		}
+
+		// Move zip to temp
+		if err := os.Rename(zipName, "temp/"+zipName); err != nil {
+			log.Fatalf("Failed to move zip file %s: %s", zipName, err)
+		}
 
 	})
 
