@@ -1,15 +1,11 @@
 package main
 
 import (
-	"archive/zip"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
-	"strings"
 
 	"github.com/gorilla/sessions"
 	"github.com/haicaodac/goshopify"
@@ -22,8 +18,6 @@ var (
 	key   = []byte("super-secret-key")
 	store = sessions.NewCookieStore(key)
 )
-
-
 
 func main() {
 	app = goshopify.New(goshopify.Config{
