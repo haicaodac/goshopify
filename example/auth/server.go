@@ -91,7 +91,7 @@ func main() {
 
 	http.HandleFunc("/archive-zip", func(w http.ResponseWriter, r *http.Request) {
 		if _, err := os.Stat("temp"); os.IsNotExist(err) {
-			os.Mkdir("temp", 0777)
+			os.Mkdir("temp", 0644)
 		}
 
 		html := []byte(`<html>
