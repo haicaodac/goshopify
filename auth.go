@@ -42,7 +42,6 @@ func (app *AppShopify) VerifyAuthURL(u *url.URL) (bool, error) {
 	q.Del("signature")
 
 	message, err := url.QueryUnescape(q.Encode())
-
 	return app.VerifyMessage(message, messageMAC), err
 }
 
