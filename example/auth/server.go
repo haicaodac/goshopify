@@ -8,6 +8,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/gorilla/sessions"
 	"github.com/haicaodac/goshopify"
@@ -21,7 +23,30 @@ var (
 	store = sessions.NewCookieStore(key)
 )
 
+func removeIndexFromSlice(s []string, i int) []string {
+	s[i] = s[len(s)-1]
+	return s[:len(s)-1]
+}
+
 func appendFiles(filename string, zipw *zip.Writer) error {
+	currentDir, err := os.Getwd()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	defer os.Chdir(currentDir)
+
+	dir, err := filepath.Abs(filename)
+	if err != nil {
+		log.Fatalf("Failed to open %s: %s", filename, err)
+	}
+
+	arr := strings.Split(dir, "/")
+	filename = arr[len(arr)-1]
+	arr = removeIndexFromSlice(arr, len(arr)-1)
+	dir = strings.Join(arr, "/")
+	os.Chdir(dir)
+
 	file, err := os.Open(filename)
 	if err != nil {
 		return fmt.Errorf("Failed to open %s: %s", filename, err)
@@ -29,8 +54,6 @@ func appendFiles(filename string, zipw *zip.Writer) error {
 	defer file.Close()
 
 	wr, err := zipw.Create(filename)
-	log.Println(filename)
-	log.Println(wr)
 	if err != nil {
 		msg := "Failed to create entry for %s in zip file: %s"
 		return fmt.Errorf(msg, filename, err)
@@ -39,7 +62,6 @@ func appendFiles(filename string, zipw *zip.Writer) error {
 	if _, err := io.Copy(wr, file); err != nil {
 		return fmt.Errorf("Failed to write %s to zip: %s", filename, err)
 	}
-
 	return nil
 }
 
@@ -96,13 +118,13 @@ func main() {
 
 		html := []byte(`<html>
 		<head>
-			<title>Xin chao</title>
+			<title>Hi Nora</title>
 		</head>
 		<body>
 			<h1>Minh</h1>
 		</body>
 	</html>`)
-		err := ioutil.WriteFile("html.liquid", html, 0644)
+		err := ioutil.WriteFile("temp/html.liquid", html, 0644)
 		if err != nil {
 			panic(err)
 		}
@@ -110,28 +132,28 @@ func main() {
 		css := []byte(`.h1{
 			color: red;
 		}`)
-		err = ioutil.WriteFile("css.liquid", css, 0644)
+		err = ioutil.WriteFile("temp/css.liquid", css, 0644)
 		if err != nil {
 			panic(err)
 		}
 
 		js := []byte(`<script>
-		alert("xin chao")
+		alert("Hello Nora")
 	</script>`)
-		err = ioutil.WriteFile("js.liquid", js, 0644)
+		err = ioutil.WriteFile("temp/js.liquid", js, 0644)
 		if err != nil {
 			panic(err)
 		}
 
 		flags := os.O_WRONLY | os.O_CREATE | os.O_TRUNC
-		zipName := "theme.zip"
+		zipName := "temp/theme.zip"
 		file, err := os.OpenFile(zipName, flags, 0644)
 		if err != nil {
 			log.Fatalf("Failed to open zip for writing: %s", err)
 		}
 		defer file.Close()
 
-		files := []string{"html.liquid", "css.liquid", "js.liquid"}
+		files := []string{"temp/html.liquid", "temp/css.liquid", "temp/js.liquid"}
 
 		zipw := zip.NewWriter(file)
 		defer zipw.Close()
@@ -142,15 +164,15 @@ func main() {
 			}
 
 			// Remove file after append to zip
-			if err := os.Remove(filename); err != nil {
-				log.Fatalf("Failed to remove file %s: %s", filename, err)
-			}
+			// if err := os.Remove(filename); err != nil {
+			// 	log.Fatalf("Failed to remove file %s: %s", filename, err)
+			// }
 		}
 
 		// Move zip to temp
-		if err := os.Rename(zipName, "temp/"+zipName); err != nil {
-			log.Fatalf("Failed to move zip file %s: %s", zipName, err)
-		}
+		// if err := os.Rename(zipName, "temp/"+zipName); err != nil {
+		// 	log.Fatalf("Failed to move zip file %s: %s", zipName, err)
+		// }
 
 	})
 
