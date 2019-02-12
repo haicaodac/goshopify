@@ -28,7 +28,7 @@ func removeIndexFromSlice(s []string, i int) []string {
 	return s[:len(s)-1]
 }
 
-func appendFiles(filename string, zipw *zip.Writer) error {
+func appendFiles(source string, zipw *zip.Writer) error {
 	currentDir, err := os.Getwd()
 	if err != nil {
 		fmt.Println(err)
@@ -36,32 +36,84 @@ func appendFiles(filename string, zipw *zip.Writer) error {
 	}
 	defer os.Chdir(currentDir)
 
-	dir, err := filepath.Abs(filename)
+	info, err := os.Stat(source)
 	if err != nil {
-		log.Fatalf("Failed to open %s: %s", filename, err)
+		return nil
 	}
 
-	arr := strings.Split(dir, "/")
-	filename = arr[len(arr)-1]
-	arr = removeIndexFromSlice(arr, len(arr)-1)
-	dir = strings.Join(arr, "/")
+	dir, err := filepath.Abs(source)
+	if err != nil {
+		log.Fatalf("Failed to open %s: %s", source, err)
+	}
+
+	var baseDir string
+	if info.IsDir() {
+		baseDir = filepath.Base(source)
+	} else {
+		arr := strings.Split(dir, "/")
+		log.Println(arr)
+		arr = removeIndexFromSlice(arr, len(arr)-1)
+		dir = strings.Join(arr, "/")
+	}
+
 	os.Chdir(dir)
 
-	file, err := os.Open(filename)
-	if err != nil {
-		return fmt.Errorf("Failed to open %s: %s", filename, err)
-	}
-	defer file.Close()
+	filepath.Walk("./", func(path string, info os.FileInfo, err error) error {
+		log.Println(os.Getwd())
+		if err != nil {
+			return err
+		}
 
-	wr, err := zipw.Create(filename)
-	if err != nil {
-		msg := "Failed to create entry for %s in zip file: %s"
-		return fmt.Errorf(msg, filename, err)
-	}
+		header, err := zip.FileInfoHeader(info)
+		if err != nil {
+			return err
+		}
 
-	if _, err := io.Copy(wr, file); err != nil {
-		return fmt.Errorf("Failed to write %s to zip: %s", filename, err)
-	}
+		if baseDir != "" {
+			log.Println(baseDir)
+			header.Name = filepath.Join(baseDir, strings.TrimPrefix(path, source))
+		}
+		log.Println(header.Name)
+
+		if info.IsDir() {
+			header.Name += "/"
+		} else {
+			header.Method = zip.Deflate
+		}
+
+		writer, err := zipw.CreateHeader(header)
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			return nil
+		}
+
+		file, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		_, err = io.Copy(writer, file)
+		return err
+	})
+
+	// file, err := os.Open(source)
+	// if err != nil {
+	// 	return fmt.Errorf("Failed to open %s: %s", source, err)
+	// }
+	// defer file.Close()
+
+	// wr, err := zipw.Create(source)
+	// if err != nil {
+	// 	msg := "Failed to create entry for %s in zip file: %s"
+	// 	return fmt.Errorf(msg, source, err)
+	// }
+
+	// if _, err := io.Copy(wr, file); err != nil {
+	// 	return fmt.Errorf("Failed to write %s to zip: %s", source, err)
+	// }
 	return nil
 }
 
@@ -178,8 +230,8 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		zipName := "temp/theme.zip"
-		files := []string{"temp/html.liquid", "temp/css.liquid", "temp/js.liquid"}
+		zipName := "temp/Narrative.zip"
+		files := []string{"temp/theme2/"}
 		if err := ZipFiles(files, zipName); err != nil {
 			log.Println("Failed to zip files")
 		}
